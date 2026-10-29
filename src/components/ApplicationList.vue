@@ -7,6 +7,8 @@ defineProps({
     required: true,
   },
 })
+
+const emit = defineEmits(['select'])
 </script>
 
 <template>
@@ -24,6 +26,7 @@ defineProps({
         v-for="application in applications"
         :key="application.id"
         :application="application"
+        @select="emit('select', application.id)"
       />
     </div>
   </section>

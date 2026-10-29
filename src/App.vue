@@ -1,12 +1,20 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { supabase } from './lib/supabase.js'
 import ApplicationForm from './components/ApplicationForm.vue'
 import ApplicationList from './components/ApplicationList.vue'
+import ApplicationDetails from './components/ApplicationDetails.vue'
 
 const userId = ref('')
 const applications = ref([])
 const message = ref('')
+const currentView = ref('list')
+const selectedApplicationId = ref(null)
+const events = ref([])
+
+const selectedApplication = computed(() =>
+  applications.value.find((application) => application.id === selectedApplicationId.value),
+)
 
 // RLS needs a signed-in user, so each browser signs in anonymously.
 async function signIn() {
@@ -70,6 +78,51 @@ async function saveApplication(application) {
   message.value = `Saved ${data.company} to Supabase.`
 }
 
+async function openDetails(id) {
+  selectedApplicationId.value = id
+  events.value = []
+  currentView.value = 'details'
+  await loadEvents(id)
+}
+
+// Read the follow-up rows that Make.com added for this application.
+async function loadEvents(applicationId) {
+  const { data, error } = await supabase
+    .from('application_events')
+    .select()
+    .eq('application_id', applicationId)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    message.value = `Could not load follow-ups: ${error.message}`
+    return
+  }
+  events.value = data
+}
+
+async function updateStatus(newStatus) {
+  const application = selectedApplication.value
+  if (!application || !userId.value) return
+
+  const { data, error } = await supabase
+    .from('applications')
+    .update({ status: newStatus })
+    .eq('id', application.id)
+    .eq('owner_id', userId.value)
+    .select('id')
+    .maybeSingle()
+
+  if (error || !data) {
+    message.value = error
+      ? `Could not update status: ${error.message}`
+      : 'No application was updated. Check ownership and RLS policies.'
+    return
+  }
+
+  application.status = newStatus
+  message.value = `${application.company} is now ${newStatus}.`
+}
+
 async function startApp() {
   if (!supabase) {
     message.value = 'Supabase is not configured. Add your keys to .env.local.'
@@ -119,11 +172,21 @@ startApp()
         <ApplicationForm @submitted="saveApplication" />
       </section>
 
-      <section class="card lg:col-span-3">
+      <section v-if="currentView === 'details' && selectedApplication" class="card lg:col-span-3">
+        <ApplicationDetails
+          :key="selectedApplication.id"
+          :application="selectedApplication"
+          :events="events"
+          @back="currentView = 'list'"
+          @update-status="updateStatus"
+        />
+      </section>
+
+      <section v-else class="card lg:col-span-3">
         <h2 class="mb-5 text-lg font-bold text-slate-900">
           My applications ({{ applications.length }})
         </h2>
-        <ApplicationList :applications="applications" />
+        <ApplicationList :applications="applications" @select="openDetails" />
       </section>
     </main>
   </div>
