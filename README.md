@@ -53,6 +53,7 @@ The Make.com connection uses the Supabase secret key, which stays inside Make.co
 | Make.com scenario | ![Make.com scenario](screenshots/06-make-scenario.png) |
 | Make.com Create a Row: connection and table | ![Make.com connection](screenshots/07-make-mapping-connection.png) |
 | Make.com Create a Row: field mapping | ![Make.com mapping](screenshots/07-make-mapping-fields.png) |
+| Phone view | ![Phone view](screenshots/09-vue-mobile.png) |
 
 ## Run locally
 
